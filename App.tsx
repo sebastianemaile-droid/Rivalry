@@ -5,6 +5,8 @@ import { getRivalryCommentary } from './services/aiAssistant.ts';
 import UserPanel from './components/UserPanel.tsx';
 import HistorySection from './components/HistorySection.tsx';
 
+const STORAGE_KEY = 'power_list_rivalry_sprint_v2';
+
 const INITIAL_USER_DATA = (name: string): UserData => ({
   name,
   streak: 0,
@@ -17,8 +19,14 @@ const INITIAL_USER_DATA = (name: string): UserData => ({
 
 const App: React.FC = () => {
   const [state, setState] = useState<RivalryState>(() => {
-    const saved = localStorage.getItem('power_list_rivalry_sprint');
-    if (saved) return JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Failed to load saved state:", e);
+    }
     return {
       Sebastian: INITIAL_USER_DATA('Sebastian'),
       Cole: INITIAL_USER_DATA('Cole')
@@ -28,9 +36,38 @@ const App: React.FC = () => {
   const [aiCommentary, setAiCommentary] = useState<string>("Referee is inspecting the track...");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Persistence
   useEffect(() => {
-    localStorage.setItem('power_list_rivalry_sprint', JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  // Streak Audit (Run on mount)
+  useEffect(() => {
+    setState(prev => {
+      const auditUser = (user: UserData) => {
+        if (!user.lastCompletedDate) return user;
+        
+        const lastDate = new Date(user.lastCompletedDate);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        lastDate.setHours(0,0,0,0);
+        
+        const diffTime = Math.abs(today.getTime() - lastDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        // If more than 1 day has passed since last completion, streak dies
+        if (diffDays > 1) {
+          return { ...user, streak: 0 };
+        }
+        return user;
+      };
+
+      return {
+        Sebastian: auditUser(prev.Sebastian),
+        Cole: auditUser(prev.Cole)
+      };
+    });
+  }, []);
 
   const updateAiCommentary = useCallback(async () => {
     setIsRefreshing(true);
@@ -64,23 +101,25 @@ const App: React.FC = () => {
   };
 
   const handleEndDay = (user: UserRole) => {
+    const todayStr = new Date().toDateString();
+    
     setState(prev => {
       const userData = { ...prev[user] };
+      
+      if (userData.lastCompletedDate === todayStr) {
+        alert("You've already locked in today. Rest up for tomorrow's sprint.");
+        return prev;
+      }
+
       const allDone = userData.tasksToday.length === 5 && userData.tasksToday.every(t => t.completed);
       const readyForTomorrow = userData.tasksTomorrow.every(t => t.trim().length > 0);
 
       if (!readyForTomorrow) {
-        alert(`${user}, you must plan your 5 tasks for tomorrow before ending today!`);
+        alert(`${user}, the rule of the 5: You must plan tomorrow's power list before ending today!`);
         return prev;
       }
 
-      const todayStr = new Date().toDateString();
-      if (userData.lastCompletedDate === todayStr) {
-        alert("Already submitted for today. Rest up.");
-        return prev;
-      }
-
-      // Gamify Streak
+      // Update Streak
       if (allDone) {
         userData.streak += 1;
         if (userData.streak > userData.bestStreak) userData.bestStreak = userData.streak;
@@ -96,6 +135,7 @@ const App: React.FC = () => {
       };
       userData.history = [historyEntry, ...userData.history];
 
+      // Prepare tomorrow
       userData.tasksToday = userData.tasksTomorrow.map((t, idx) => ({
         id: `t-${Date.now()}-${idx}`,
         text: t,
@@ -114,6 +154,10 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen pb-24 p-4 md:p-10 bg-[#020617]">
       <header className="max-w-6xl mx-auto text-center mb-12">
+        <div className="flex justify-center items-center gap-2 mb-4">
+           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+           <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Habit Engine Active / Auto-Saving</span>
+        </div>
         <div className="inline-block bg-yellow-500 text-black font-bungee px-4 py-1 rounded-sm mb-4 transform -rotate-1 skew-x-12">
           NEW YEAR HABIT TRACKER
         </div>
@@ -122,13 +166,13 @@ const App: React.FC = () => {
         </h1>
         
         <div className="flex justify-center items-center gap-8 mb-10 mt-6">
-          <div className="text-center">
-            <span className="text-4xl">🦁</span>
+          <div className="text-center group cursor-help">
+            <span className="text-4xl group-hover:scale-125 transition-transform inline-block">🦁</span>
             <p className="text-[10px] font-black text-cyan-500 tracking-widest mt-1 uppercase">Sebastian</p>
           </div>
           <div className="text-2xl font-bungee text-slate-700 italic">VS</div>
-          <div className="text-center">
-            <span className="text-4xl">🐼</span>
+          <div className="text-center group cursor-help">
+            <span className="text-4xl group-hover:scale-125 transition-transform inline-block">🐼</span>
             <p className="text-[10px] font-black text-red-500 tracking-widest mt-1 uppercase">Cole</p>
           </div>
         </div>
@@ -191,7 +235,7 @@ const App: React.FC = () => {
         <button 
           onClick={() => {
             if(confirm("Factory Reset? All streaks and history will be nuked.")) {
-              localStorage.removeItem('power_list_rivalry_sprint');
+              localStorage.removeItem(STORAGE_KEY);
               window.location.reload();
             }
           }}
