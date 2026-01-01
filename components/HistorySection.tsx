@@ -19,7 +19,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({ name, history, color })
     <div className={`bg-slate-900/40 rounded-3xl border ${accentBorder} p-6 shadow-xl`}>
       <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-6 flex items-center justify-between">
         <span className="flex items-center gap-2">
-          {isRed ? <span>🐼</span> : <span>🐍</span>}
+          {isRed ? <span>🐼</span> : <span>🦁</span>}
           {name}'s History Log
         </span>
         <span className="bg-slate-800 px-2 py-1 rounded text-[10px]">{history.length} Days tracked</span>

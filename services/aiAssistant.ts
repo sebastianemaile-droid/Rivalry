@@ -7,7 +7,7 @@ export const getRivalryCommentary = async (state: RivalryState): Promise<string>
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
   const prompt = `
-    Context: Sebastian (Team Mamba 🐍) and Cole (Team Panda 🐼) are in a high-stakes habit battle.
+    Context: Sebastian (Team Lion 🦁) and Cole (Team Panda 🐼) are in a high-stakes 30-day habit sprint.
     Stakes: First to 30 days wins. Loser gets a buzz cut. 
     
     Current Stats:
@@ -20,7 +20,7 @@ export const getRivalryCommentary = async (state: RivalryState): Promise<string>
 
     Your role: You are the "Hardcore Habit Referee". 
     Write a short (max 2 sentences), punchy, and aggressive comment about who is closer to the buzz cut. 
-    Refer to them by name and mascot. Mention the buzz cut razor.
+    Refer to them by name and mascot. Mention the buzz cut razor and the 30-day sprint goal.
   `;
 
   try {
