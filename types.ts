@@ -27,4 +27,5 @@ export type UserRole = 'Sebastian' | 'Cole';
 export interface RivalryState {
   Sebastian: UserData;
   Cole: UserData;
+  customMotto: string;
 }
